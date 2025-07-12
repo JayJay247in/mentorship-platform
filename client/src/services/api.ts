@@ -10,14 +10,29 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      if (!config.headers) {
-        config.headers = {};
-      }
+      // This is the correct and safe way to add the header.
+      // Axios ensures config.headers exists. We just add our property.
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => response, // On success, just return the response
+  (error) => {
+    // If the error is a 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+      // Remove the token from storage
+      localStorage.removeItem('token');
+      // Redirect to the login page
+      // This is a bit forceful, but ensures security.
+      window.location.href = '/login';
+    }
+    // For all other errors, just pass them along
     return Promise.reject(error);
   }
 );
