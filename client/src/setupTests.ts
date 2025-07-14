@@ -1,15 +1,15 @@
 // src/setupTests.ts
-
-// This polyfill MUST be the first thing in this file.
-// It provides the TextEncoder/TextDecoder that MSW's dependencies need.
-import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
-
-
-// The rest of the setup file follows.
 import '@testing-library/jest-dom';
+
+import { TextDecoder,TextEncoder } from 'util'; // Import from Node's built-in 'util' module
+
 import { server } from './mocks/server';
+
+// --- THIS IS THE FIX ---
+// Polyfill for TextEncoder and TextDecoder
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as typeof global.TextDecoder;
+// --- END OF FIX ---
 
 // Establish API mocking before all tests.
 beforeAll(() => server.listen());

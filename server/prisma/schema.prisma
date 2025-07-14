@@ -47,6 +47,9 @@ model User {
   sessionsAsMentee  Session[]           @relation("MenteeSessions")
   sessionsAsMentor  Session[]           @relation("MentorSessions")
   feedbackGiven     Feedback[]
+  availability      Availability[]
+  passwordResetToken       String?   @unique
+  passwordResetTokenExpiry DateTime?
 }
 
 model Skill {
@@ -110,4 +113,16 @@ model Feedback {
 
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime String   // e.g., "09:00" in 24-hour format
+  endTime   String   // e.g., "17:00"
+
+  mentor    User     @relation(fields: [mentorId], references: [id])
+  mentorId  String
+
+  @@unique([mentorId, dayOfWeek, startTime, endTime]) // Prevent duplicate slots
 }

@@ -1,37 +1,62 @@
 // src/components/MentorCard.tsx
+import { motion } from 'framer-motion';
 import React from 'react';
+
 import { Mentor } from '../types';
 
 interface MentorCardProps {
   mentor: Mentor;
-  onRequest: (mentorId: string) => void; // Callback function for the request button
+  onRequest: (mentorId: string) => void;
+  hasRequested: boolean;
+  isSubmitting: boolean;
 }
 
-const MentorCard = ({ mentor, onRequest }: MentorCardProps) => {
+const MentorCard = ({
+  mentor,
+  onRequest,
+  hasRequested,
+  isSubmitting,
+}: MentorCardProps) => {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-xl">
-      <h3 className="text-xl font-bold text-gray-800">{mentor.name}</h3>
-      <p className="mt-2 text-gray-600 italic">{mentor.bio || 'No bio provided.'}</p>
-      <div className="mt-4">
-        <h4 className="font-semibold text-gray-700">Skills:</h4>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {mentor.skills.length > 0 ? (
-            mentor.skills.map(({ skill }) => (
-              <span key={skill.id} className="px-2 py-1 text-xs font-medium text-indigo-800 bg-indigo-100 rounded-full">
-                {skill.name}
-              </span>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No skills listed.</p>
-          )}
+    <div className="bg-white p-6 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-xl border border-gray-200 flex flex-col">
+      <div className="flex-grow">
+        <h3 className="text-xl font-bold text-brand-primary">{mentor.name}</h3>
+        <p className="mt-2 text-brand-text-light italic text-sm">
+          {mentor.bio || 'No bio provided.'}
+        </p>
+        <div className="mt-4">
+          <h4 className="font-semibold text-brand-text">Skills:</h4>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {mentor.skills.length > 0 ? (
+              mentor.skills.map(({ skill }) => (
+                <span
+                  key={skill.id}
+                  className="px-3 py-1 text-xs font-semibold text-brand-accent bg-brand-accent bg-opacity-10 rounded-full"
+                >
+                  {skill.name}
+                </span>
+              ))
+            ) : (
+              <p className="text-sm text-brand-text-light">No skills listed.</p>
+            )}
+          </div>
         </div>
       </div>
-      <button
-        onClick={() => onRequest(mentor.id)}
-        className="w-full mt-6 px-4 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none"
-      >
-        Request Mentorship
-      </button>
+      <div className="mt-6">
+        <motion.button
+          onClick={() => onRequest(mentor.id)}
+          disabled={hasRequested || isSubmitting}
+          className="w-full px-4 py-2 font-semibold text-white rounded-md focus:outline-none transition-colors duration-200
+                     disabled:bg-gray-300 disabled:cursor-not-allowed
+                     bg-brand-accent hover:opacity-90"  whileTap={{ scale: 0.95 }}
+        >
+          {isSubmitting
+            ? 'Sending...'
+            : hasRequested
+              ? 'Request Sent'
+              : 'Request Mentorship'}
+        </motion.button>
+      </div>
     </div>
   );
 };

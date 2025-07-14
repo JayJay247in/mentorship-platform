@@ -1,4 +1,13 @@
 /* src/index.css */
+
+/* --- THIS IS THE NEW SECTION --- */
+/* 1. Import the custom fonts from Google Fonts. */
+/* We specify the font families and the weights we need. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;600&display=swap');
+/* --- END OF NEW SECTION --- */
+
+
+/* These are the existing Tailwind directives. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

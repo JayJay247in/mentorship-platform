@@ -1,0 +1,13 @@
+# .prettierignore
+
+# Dependencies
+/node_modules
+/client/node_modules
+/server/node_modules
+
+# Build artifacts
+/client/build
+/server/dist
+
+# Environment variables
+.env

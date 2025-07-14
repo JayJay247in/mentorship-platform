@@ -2,10 +2,10 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/authMiddleware';
 import {
-    createMentorshipRequest,
-    getSentRequests,
-    getReceivedRequests,
-    updateRequestStatus,
+  createMentorshipRequest,
+  getSentRequests,
+  getReceivedRequests,
+  updateRequestStatus,
 } from '../controllers/requestController';
 
 const router = Router();

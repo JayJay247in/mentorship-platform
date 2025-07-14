@@ -16,7 +16,7 @@
     /* Module Resolution */
     "module": "CommonJS", // The module system for the compiled code
     "moduleResolution": "node", // How modules are found
-    
+
     /* Output */
     "outDir": "./dist", // Where the compiled JavaScript will go
     "rootDir": "./src", // The root directory of your source files

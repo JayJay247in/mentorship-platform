@@ -2,10 +2,11 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/authMiddleware';
 import {
-    scheduleSession,
-    getSessionsAsMentee,
-    getSessionsAsMentor,
-    submitFeedback,
+  scheduleSession,
+  getSessionsAsMentee,
+  getSessionsAsMentor,
+  submitFeedback,
+  getSessionsOfUser,
 } from '../controllers/sessionController';
 
 const router = Router();

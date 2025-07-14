@@ -1,50 +1,81 @@
 // src/controllers/authController.ts
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/authMiddleware';
+import * as authService from '../services/authService';
+import handleError from '../utils/errorHandler';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
-// A secret key for JWT. Store this in your .env file in a real app!
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
-
+// Existing registerUser and loginUser functions
 export const registerUser = async (req: Request, res: Response) => {
-    const { email, password, name } = req.body;
-
-    if (!email || !password || !name) {
-        return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await prisma.user.create({
-            data: { email, password: hashedPassword, name },
-        });
-
-        // Don't send the password back
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
-    } catch (error) {
-        res.status(409).json({ message: 'User with this email already exists' });
-    }
+  try {
+    const user = await authService.register(req.body);
+    res.status(201).json(user);
+  } catch (error) {
+    handleError(error, res);
+  }
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+  try {
+    const data = await authService.login(req.body);
+    res.json(data);
+  } catch (error) {
+    handleError(error, res);
+  }
+};
 
-    try {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-
-        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
-            expiresIn: '1d', // Token expires in 1 day
-        });
-        
-        res.json({ token, userId: user.id, role: user.role });
-    } catch (error) {
-        res.status(500).json({ message: 'Something went wrong' });
+// Existing /me handler
+export const getMe = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { id: true, email: true, name: true, role: true, bio: true },
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+    res.json(user);
+  } catch (error) {
+    handleError(error, res);
+  }
+};
+
+// Existing forgotPassword function
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const clientUrl = req.headers.origin || 'http://localhost:3000';
+    await authService.forgotPassword(email, clientUrl);
+    res
+      .status(200)
+      .json({
+        message:
+          'If an account with that email exists, a password reset link has been sent.',
+      });
+  } catch (error) {
+    handleError(error, res);
+  }
+};
+
+// CORRECTED resetPassword function
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    // --- THIS IS THE FIX ---
+    // Validate that the token parameter exists before using it.
+    if (!token) {
+      return res
+        .status(400)
+        .json({ message: 'Password reset token is required.' });
+    }
+
+    await authService.resetPassword(token, password);
+    res.status(200).json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+    handleError(error, res);
+  }
 };

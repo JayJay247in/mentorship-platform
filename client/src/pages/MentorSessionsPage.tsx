@@ -1,16 +1,13 @@
 // src/pages/MentorSessionsPage.tsx
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { MentorSession } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import React from 'react';
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleString('en-US', {
-    dateStyle: 'full',
-    timeStyle: 'short',
-  });
-};
+import Spinner from '../components/Spinner';
+import { fetchSessionsAsMentor } from '../services/sessionService';
+import { Session } from '../types'; // <-- CORRECTED IMPORT
 
-const getStatusClasses = (status: MentorSession['status']) => {
+const getStatusClasses = (status: Session['status']) => {
   switch (status) {
     case 'UPCOMING':
       return 'bg-blue-100 text-blue-800';
@@ -24,39 +21,27 @@ const getStatusClasses = (status: MentorSession['status']) => {
 };
 
 const MentorSessionsPage = () => {
-  const [sessions, setSessions] = useState<MentorSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: sessions, isLoading } = useQuery<Session[]>({ // Use the correct type
+    queryKey: ['sessions', 'mentor'],
+    queryFn: fetchSessionsAsMentor,
+  });
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const response = await api.get('/sessions/mentor');
-        setSessions(response.data);
-      } catch (err) {
-        console.error('Failed to fetch sessions', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSessions();
-  }, []);
-
-  if (isLoading) return <div>Loading your sessions...</div>;
+  if (isLoading) return <Spinner />;
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">My Sessions</h1>
+      <h1 className="text-3xl font-bold text-brand-primary mb-6">My Sessions</h1>
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <ul className="divide-y divide-gray-200">
-          {sessions.length > 0 ? (
+          {sessions && sessions.length > 0 ? (
             sessions.map((session) => (
               <li key={session.id} className="p-4 flex justify-between items-center">
                 <div>
-                  <p className="text-lg font-semibold text-gray-900">
+                  <p className="text-lg font-semibold text-brand-text">
                     Session with: {session.mentee.name}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    Scheduled for: {formatDate(session.scheduledTime)}
+                  <p className="text-sm text-brand-text-light">
+                    Scheduled for: {format(new Date(session.scheduledTime), 'eeee, MMM d @ h:mm a')}
                   </p>
                 </div>
                 <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusClasses(session.status)}`}>
@@ -65,7 +50,7 @@ const MentorSessionsPage = () => {
               </li>
             ))
           ) : (
-            <p className="p-4 text-gray-600">You have no scheduled sessions.</p>
+            <p className="p-4 text-brand-text-light">You have no scheduled sessions.</p>
           )}
         </ul>
       </div>

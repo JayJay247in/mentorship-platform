@@ -1,23 +1,28 @@
 // src/routes/auth.ts
 import { Router } from 'express';
-import { registerUser, loginUser } from '../controllers/authController';
-import { protect, AuthRequest } from '../middleware/authMiddleware';
-import { PrismaClient } from '@prisma/client';
+import {
+  registerUser,
+  loginUser,
+  getMe,
+  forgotPassword,
+  resetPassword,
+} from '../controllers/authController';
+import { protect } from '../middleware/authMiddleware';
+import { validate } from '../middleware/validate'; // Import our new middleware
+import { registerSchema, loginSchema } from '../schemas/authSchema'; // Import our new schemas
 
 const router = Router();
-const prisma = new PrismaClient();
 
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+// Apply the validation middleware before the controller function is called.
+// If validation fails, the controller will never even run.
+router.post('/register', validate(registerSchema), registerUser);
+router.post('/login', validate(loginSchema), loginUser);
 
-// This is the GET /auth/me endpoint from your PRD
-router.get('/me', protect, async (req: AuthRequest, res) => {
-    // The `protect` middleware has already verified the token and added `user` to the request
-    const user = await prisma.user.findUnique({
-        where: { id: req.user!.userId },
-        select: { id: true, email: true, name: true, role: true, bio: true } // Select only safe fields
-    });
-    res.json(user);
-});
+// Other routes that can also have validation added later
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:token', resetPassword);
+
+// This route is protected by a different middleware
+router.get('/me', protect, getMe);
 
 export default router;

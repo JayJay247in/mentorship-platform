@@ -1,51 +1,62 @@
 // src/pages/IncomingRequestsPage.tsx
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { ReceivedRequest } from '../types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { toast } from 'react-toastify';
 
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString();
+import Spinner from '../components/Spinner';
+import {
+  fetchReceivedRequests,
+  updateRequestStatus,
+} from '../services/requestService';
+
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString();
 
 const IncomingRequestsPage = () => {
-  const [requests, setRequests] = useState<ReceivedRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchRequests = async () => {
-    try {
-      const response = await api.get('/requests/received');
-      // We only want to show pending requests on this page
-      setRequests(response.data.filter((req: ReceivedRequest) => req.status === 'PENDING'));
-    } catch (err) {
-      console.error('Failed to fetch requests', err);
-    } finally {
-      setIsLoading(false);
-    }
+  const { data: allRequests, isLoading } = useQuery({
+    queryKey: ['receivedRequests'],
+    queryFn: fetchReceivedRequests,
+  });
+
+  const updateRequestMutation = useMutation({
+    mutationFn: updateRequestStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      toast.success('Request status updated!');
+    },
+    onError: () => {
+      toast.error('Failed to update request. Please try again.');
+    },
+  });
+
+  const handleUpdateRequest = (
+    requestId: string,
+    status: 'ACCEPTED' | 'REJECTED'
+  ) => {
+    updateRequestMutation.mutate({ requestId, status });
   };
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+  if (isLoading) return <Spinner />;
 
-  const handleUpdateRequest = async (requestId: string, status: 'ACCEPTED' | 'REJECTED') => {
-    try {
-      await api.put(`/requests/${requestId}`, { status });
-      // Remove the request from the list for immediate UI feedback
-      setRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
-      alert(`Request has been ${status.toLowerCase()}.`);
-    } catch (err) {
-      alert('Failed to update the request. Please try again.');
-    }
-  };
-
-  if (isLoading) return <div>Loading incoming requests...</div>;
+  const pendingRequests = allRequests?.filter(
+    (req) => req.status === 'PENDING'
+  );
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Incoming Mentorship Requests</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6 font-display">
+        Incoming Mentorship Requests
+      </h1>
       <div className="bg-white shadow-md rounded-lg">
-        {requests.length > 0 ? (
+        {pendingRequests && pendingRequests.length > 0 ? (
           <ul className="divide-y divide-gray-200">
-            {requests.map((request) => (
-              <li key={request.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            {pendingRequests.map((request) => (
+              <li
+                key={request.id}
+                className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center"
+              >
                 <div>
                   <p className="text-lg font-semibold text-gray-900">
                     Request from: {request.mentee.name}
@@ -57,13 +68,15 @@ const IncomingRequestsPage = () => {
                 <div className="flex space-x-2 mt-4 sm:mt-0">
                   <button
                     onClick={() => handleUpdateRequest(request.id, 'ACCEPTED')}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-green-500 rounded-md hover:bg-green-600"
+                    disabled={updateRequestMutation.isPending}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-green-500 rounded-md hover:bg-green-600 disabled:bg-gray-400"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => handleUpdateRequest(request.id, 'REJECTED')}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-md hover:bg-red-600"
+                    disabled={updateRequestMutation.isPending}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-md hover:bg-red-600 disabled:bg-gray-400"
                   >
                     Reject
                   </button>

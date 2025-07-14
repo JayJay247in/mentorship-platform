@@ -2,11 +2,11 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/authMiddleware';
 import {
-    getAllUsers,
-    updateUserRole,
-    getAllRequests,
-    getAllSessions,
-    createManualMatch
+  getAllUsers,
+  updateUserRole,
+  getAllRequests,
+  getAllSessions,
+  createManualMatch,
 } from '../controllers/adminController';
 
 const router = Router();
