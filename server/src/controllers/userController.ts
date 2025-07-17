@@ -73,30 +73,15 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
 
 // --- REFACTORED CONTROLLER ---
 // This controller now delegates all logic to the service.
-export const updateCurrentUserProfile = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const userId = req.user!.userId;
-    // The request body has already been validated by Zod
-    await userService.updateUserProfile(userId, req.body);
+export const updateCurrentUserProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user!.userId;
+        
+        // The service now handles both updating AND fetching the final data.
+        const finalUserProfile = await userService.updateUserProfile(userId, req.body);
 
-    // Fetch the final, fully updated profile to return to the client
-    const finalUserProfile = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        bio: true,
-        role: true,
-        skills: { select: { skill: { select: { id: true, name: true } } } },
-      },
-    });
-
-    res.json(finalUserProfile);
-  } catch (error) {
-    handleError(error, res);
-  }
+        res.json(finalUserProfile);
+    } catch (error) {
+        handleError(error, res);
+    }
 };

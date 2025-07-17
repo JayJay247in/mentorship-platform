@@ -1,9 +1,9 @@
 // src/components/Layout.tsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-
 import Navbar from './Navbar';
-import AnimatedPage from './ui/AnimatedPage'; // Import the wrapper
+import AnimatedPage from './ui/AnimatedPage';
+import ChatBubble from './ChatBubble'; // <-- IMPORT
 
 const Layout = () => {
   return (
@@ -11,13 +11,12 @@ const Layout = () => {
       <Navbar />
       <main>
         <div className="container mx-auto px-6 py-8">
-          {/* --- THIS IS THE CHANGE --- */}
-          {/* Wrap the Outlet in our new animation component */}
           <AnimatedPage>
             <Outlet />
           </AnimatedPage>
         </div>
       </main>
+      <ChatBubble /> {/* <-- ADD THE COMPONENT HERE */}
     </div>
   );
 };

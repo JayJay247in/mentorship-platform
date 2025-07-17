@@ -22,6 +22,7 @@ import SessionManagementPage from './pages/admin/SessionManagementPage';
 // Admin Pages
 import UserManagementPage from './pages/admin/UserManagementPage';
 import AvailabilityPage from './pages/AvailabilityPage';
+import ChatPage from './pages/ChatPage'
 // Shared Protected Pages
 import DashboardPage from './pages/DashboardPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -77,6 +78,7 @@ function App() {
                 {/* Shared */}
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/chat/:requestId" element={<ChatPage />} />
 
                 {/* Mentee */}
                 <Route path="/mentors" element={<MentorListPage />} />

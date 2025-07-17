@@ -11,50 +11,60 @@ interface Notification {
 }
 
 interface SocketContextType {
+  socket: Socket | null; // Expose the socket instance
   notifications: Notification[];
   clearNotifications: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
+// Define socket outside the component to prevent re-creation on re-renders
+let socket: Socket | null = null;
 const socketUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
-let socket: Socket;
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    if (user) {
-      // Connect to the server if not already connected
-      if (!socket) {
-        socket = io(socketUrl);
-      }
+    // Connect only if we have a user and no existing socket connection
+    if (user && !socket) {
+      // --- THIS IS THE CHANGE ---
+      // Pass the user's ID in the 'auth' option upon connection
+      socket = io(socketUrl, {
+        auth: {
+          userId: user.id,
+        },
+      });
 
-      // Register the user with the socket server
-      socket.emit('register', user.id);
+      socket.on('connect', () => {
+        console.log('Socket connected:', socket?.id);
+      });
 
       // Set up the listener for new notifications
       socket.on('notification', (newNotification: Notification) => {
         setNotifications(prev => [newNotification, ...prev]);
-        toast.info(newNotification.message); // Also show a toast!
+        toast.info(newNotification.message);
       });
 
+    } else if (!user && socket) {
+      // If the user logs out, disconnect the socket
+      socket.disconnect();
+      socket = null;
     }
 
-    // Clean up on component unmount or user logout
+    // Clean up on component unmount
     return () => {
-      if (socket) {
-        socket.off('notification');
-        // You might choose to disconnect here if the user logs out
-        // socket.disconnect();
-      }
+      // We don't want to disconnect on every re-render, only on logout,
+      // which is handled by the condition above.
+      // So the main cleanup is just removing the listener.
+      socket?.off('notification');
     };
   }, [user]);
 
   const clearNotifications = () => setNotifications([]);
   
-  const value = { notifications, clearNotifications };
+  const value = { socket, notifications, clearNotifications };
 
   return (
     <SocketContext.Provider value={value}>

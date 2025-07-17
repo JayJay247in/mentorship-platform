@@ -13,6 +13,9 @@ import sessionRoutes from './routes/sessions';
 import adminRoutes from './routes/admin';
 import availabilityRoutes from './routes/availability';
 import skillRoutes from './routes/skills';
+import uploadRoutes from './routes/upload';
+import messageRoutes from './routes/messages';
+import conversationRoutes from './routes/conversations';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +40,9 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/conversations', conversationRoutes);
 
 app.get('/api', (req: Request, res: Response) => {
   res.send('API is running...');

@@ -6,46 +6,48 @@ const prisma = new PrismaClient();
 interface UpdateProfilePayload {
   name?: string;
   bio?: string;
+  avatarUrl?: string; // Add the new field
   skills?: string[];
 }
 
-// This service handles updating a user's profile
-export const updateUserProfile = async (
-  userId: string,
-  payload: UpdateProfilePayload
-) => {
-  const { name, bio, skills } = payload;
+export const updateUserProfile = async (userId: string, payload: UpdateProfilePayload) => {
+  const { name, bio, skills, avatarUrl } = payload; // Destructure avatarUrl
 
-  // Use a transaction to ensure all updates succeed or none do.
-  return await prisma.$transaction(async (tx) => {
-    // 1. Update the basic user info if provided
-    const updatedUser = await tx.user.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
       where: { id: userId },
       data: {
-        name, // If name is undefined, Prisma just ignores it
-        bio, // Same for bio
+        name,
+        bio,
+        avatarUrl, // Pass avatarUrl to the update data
       },
     });
 
-    // 2. Handle skills update only if the skills array is provided
     if (skills) {
-      // First, remove all existing skills for this user
-      await tx.userSkill.deleteMany({
-        where: { userId: userId },
-      });
-
-      // Then, add the new skills if the array is not empty
+      await tx.userSkill.deleteMany({ where: { userId: userId } });
       if (skills.length > 0) {
         await tx.userSkill.createMany({
-          data: skills.map((skillId: string) => ({
-            userId: userId,
-            skillId: skillId,
-          })),
+          data: skills.map((skillId) => ({ userId, skillId })),
         });
       }
     }
-
-    // Return the updated user's core info
-    return updatedUser;
   });
+  
+  // --- THIS IS THE KEY CHANGE ---
+  // After the transaction is successful, fetch the full, final user profile
+  // including the newly updated avatarUrl and skills.
+  const finalUpdatedProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+          id: true,
+          name: true,
+          email: true,
+          bio: true,
+          role: true,
+          avatarUrl: true, // Make sure to select the new field
+          skills: { select: { skill: { select: { id: true, name: true } } } }
+      }
+  });
+
+  return finalUpdatedProfile;
 };

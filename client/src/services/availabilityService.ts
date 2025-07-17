@@ -1,4 +1,4 @@
-// client/src/services/availabilityService.ts
+// src/services/availabilityService.ts
 import api from './api';
 
 export interface AvailabilitySlot {
@@ -7,23 +7,21 @@ export interface AvailabilitySlot {
   endTime: string;
 }
 
+// Fetches the logged-in mentor's availability
 export const fetchMyAvailability = async (): Promise<AvailabilitySlot[]> => {
-  // We need the user's ID. Let's assume the /me endpoint can give it to us,
-  // or we get it from our auth context. For now, let's create a dedicated endpoint.
-  // **BACKEND CHANGE NEEDED**: Let's add GET /api/availability/me
-  // For now, we'll assume it exists.
-  const { data } = await api.get('/availability/me'); // We will add this backend route
+  const { data } = await api.get('/availability/me');
   return data;
 };
 
-export const fetchMentorAvailability = async (
-  mentorId: string
-): Promise<AvailabilitySlot[]> => {
-  const { data } = await api.get(`/availability/${mentorId}`);
-  return data;
+// Fetches a specific mentor's availability
+export const fetchMentorAvailability = async (mentorId: string): Promise<AvailabilitySlot[]> => {
+    const { data } = await api.get(`/availability/${mentorId}`);
+    return data;
 };
 
+// This function takes the array of slots and sends it in the request body
 export const updateMyAvailability = async (slots: AvailabilitySlot[]) => {
+  // The backend expects the data under a 'slots' key in the body
   const { data } = await api.put('/availability/me', { slots });
   return data;
 };

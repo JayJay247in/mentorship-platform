@@ -50,6 +50,9 @@ model User {
   availability      Availability[]
   passwordResetToken       String?   @unique
   passwordResetTokenExpiry DateTime?
+  avatarUrl   String?
+  sentMessages      Message[] @relation("SentMessages")
+  receivedMessages  Message[] @relation("ReceivedMessages")
 }
 
 model Skill {
@@ -81,6 +84,7 @@ model MentorshipRequest {
 
   // A mentorship request can lead to one session
   session   Session?
+  messages Message[]
 }
 
 model Session {
@@ -125,4 +129,24 @@ model Availability {
   mentorId  String
 
   @@unique([mentorId, dayOfWeek, startTime, endTime]) // Prevent duplicate slots
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  // The user who sent the message
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId  String
+
+  // The user who received the message
+  receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId String
+  
+  // Link the message to the specific mentorship request/match
+  request   MentorshipRequest @relation(fields: [requestId], references: [id])
+  requestId String
+
+  isRead    Boolean  @default(false)
 }

@@ -9,6 +9,16 @@ export interface User {
   email: string;
   role: UserRole;
   bio?: string;
+  avatarUrl?: string;
+}
+
+// A new type for our API response
+export interface ChatData {
+  messages: Message[];
+  participants: {
+    mentor: { id: string; name: string; avatarUrl?: string };
+    mentee: { id: string; name: string; avatarUrl?: string };
+  };
 }
 
 export interface Skill {
@@ -43,6 +53,21 @@ export interface ReceivedRequest {
     name: string;
   };
   createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  createdAt: string;
+  senderId: string;
+  receiverId: string;
+  requestId: string;
+  isRead: boolean;
+  sender: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
 }
 
 // --- THIS IS THE SINGLE, CORRECTED SESSION TYPE ---

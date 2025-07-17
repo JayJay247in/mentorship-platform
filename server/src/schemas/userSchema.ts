@@ -1,15 +1,29 @@
 // src/schemas/userSchema.ts
 import { z } from 'zod';
 
+// Schema for updating a user's profile
 export const updateProfileSchema = z.object({
   body: z.object({
-    name: z.string().min(1, { message: 'Name cannot be empty' }),
+    // Keep existing validations
+    name: z
+      .string()
+      .min(2, 'Name must be at least 2 characters long')
+      .optional(),
 
-    bio: z.string().optional(), // .optional() allows the field to be undefined
-
-    // We can also validate the skills array if it's sent
+    bio: z
+      .string()
+      .max(500, 'Bio cannot exceed 500 characters')
+      .optional(),
+      
     skills: z
-      .array(z.string().cuid({ message: 'Each skill must be a valid CUID' }))
+      .array(z.string().cuid('Invalid skill ID format'))
+      .optional(),
+
+    // --- THIS IS THE FIX ---
+    // Add avatarUrl to the schema. It must be a valid URL string, and it's optional.
+    avatarUrl: z
+      .string()
+      .url({ message: 'Invalid URL format for avatar' })
       .optional(),
   }),
 });
