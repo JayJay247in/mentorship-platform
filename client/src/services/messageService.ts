@@ -1,6 +1,6 @@
 // src/services/messageService.ts
-import api from './api';
 import { ChatData, Message } from '../types';
+import api from './api';
 
 export const fetchMessages = async (requestId: string): Promise<ChatData> => {
   const { data } = await api.get(`/messages/${requestId}`);

@@ -1,8 +1,9 @@
 // src/pages/admin/UserManagementPage.tsx
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 
+import ManualMatchModal from '../../components/admin/ManualMatchModal';
 import Spinner from '../../components/Spinner';
 import Table from '../../components/ui/Table';
 import { fetchAllUsers, updateUserRole } from '../../services/adminService';
@@ -12,6 +13,7 @@ const formatDate = (dateString: string) => new Date(dateString).toLocaleDateStri
 
 const UserManagementPage = () => {
   const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['adminUsers'],
@@ -38,7 +40,16 @@ const UserManagementPage = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6 font-display">User Management</h1>
+      <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-800 font-display">User Management</h1>
+            {/* --- ADD THIS BUTTON --- */}
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 font-semibold text-white bg-brand-accent rounded-md hover:opacity-90"
+            >
+                Create Manual Match
+            </button>
+        </div>
 
       {/* --- THIS IS THE REFACTORED PART --- */}
       <Table headers={tableHeaders}>
@@ -68,6 +79,7 @@ const UserManagementPage = () => {
           </tr>
         ))}
       </Table>
+       <ManualMatchModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 };

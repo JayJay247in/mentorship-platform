@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
-    "start": "ts-node src/server.ts",
-    "dev": "nodemon src/server.ts"
+    "test": "cross-env JWT_SECRET=YOUR_REALLY_SECRET_AND_LONG_KEY_HERE jest --detectOpenHandles",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/nodemailer": "^6.4.17",
     "@types/supertest": "^6.0.3",
+    "cross-env": "^7.0.3",
     "eslint-config-prettier": "^10.1.5",
     "jest": "^30.0.4",
     "nodemon": "^3.1.10",
@@ -28,11 +30,14 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.1.1",
     "@prisma/client": "^6.11.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^7.0.5",
     "socket.io": "^4.8.1",

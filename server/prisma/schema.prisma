@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 // ENUMS for controlled vocabulary
@@ -31,16 +32,24 @@ enum SessionStatus {
 
 // MODELS (Tables)
 model User {
-  id                String  @id @default(cuid())
-  email             String  @unique
+  id                String    @id @default(cuid())
+  email             String    @unique
   password          String
   name              String
-  role              Role    @default(MENTEE)
-  bio               String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  role              Role      @default(MENTEE)
+  bio               String?   @db.Text // Using @db.Text for longer bios
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  // Relations
+  // --- NEW FIELDS FOR PROFILE 2.0 ---
+  title             String?   // e.g., "Senior Software Engineer"
+  company           String?   // e.g., "Tech Corp Inc."
+  socialLinks       Json?     // Store links like { "linkedin": "...", "github": "..." }
+
+  // Indexes (these are correct from the last step)
+  @@index([role, name])
+
+  // All existing relations remain the same
   skills            UserSkill[]
   requestsSent      MentorshipRequest[] @relation("MenteeRequests")
   requestsReceived  MentorshipRequest[] @relation("MentorRequests")
@@ -48,11 +57,12 @@ model User {
   sessionsAsMentor  Session[]           @relation("MentorSessions")
   feedbackGiven     Feedback[]
   availability      Availability[]
-  passwordResetToken       String?   @unique
+  passwordResetToken       String?    @unique
   passwordResetTokenExpiry DateTime?
-  avatarUrl   String?
-  sentMessages      Message[] @relation("SentMessages")
-  receivedMessages  Message[] @relation("ReceivedMessages")
+  avatarUrl         String?
+  sentMessages      Message[]           @relation("SentMessages")
+  receivedMessages  Message[]           @relation("ReceivedMessages")
+  notifications     Notification[]
 }
 
 model Skill {
@@ -61,7 +71,6 @@ model Skill {
   users   UserSkill[]
 }
 
-// This is a "join table" for the many-to-many relationship between Users and Skills
 model UserSkill {
   user      User     @relation(fields: [userId], references: [id])
   userId    String
@@ -82,7 +91,12 @@ model MentorshipRequest {
   mentor    User   @relation("MentorRequests", fields: [mentorId], references: [id])
   mentorId  String
 
-  // A mentorship request can lead to one session
+  // --- SCALE UP 1.1: Add Index for Status ---
+  // We constantly filter requests by their status (e.g., finding 'ACCEPTED' ones).
+  // Indexing 'status' alongside the foreign keys will make these queries very fast.
+  @@index([menteeId, status])
+  @@index([mentorId, status])
+
   session   Session?
   messages Message[]
 }
@@ -99,16 +113,21 @@ model Session {
   mentor          User   @relation("MentorSessions", fields: [mentorId], references: [id])
   mentorId        String
 
-  // A session has one original request
   request         MentorshipRequest @relation(fields: [requestId], references: [id])
   requestId       String            @unique
 
   feedback        Feedback?
+  
+  // --- SCALE UP 1.1: Add Composite Index for Session Lookups ---
+  // Sessions are always looked up in the context of a specific user and their status.
+  // This composite index on both the user and the status is optimal.
+  @@index([menteeId, status])
+  @@index([mentorId, status])
 }
 
 model Feedback {
   id        String   @id @default(cuid())
-  rating    Int      // Rating from 1 to 5
+  rating    Int
   comment   String?
   createdAt DateTime @default(now())
 
@@ -121,14 +140,14 @@ model Feedback {
 
 model Availability {
   id        String   @id @default(cuid())
-  dayOfWeek Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  startTime String   // e.g., "09:00" in 24-hour format
-  endTime   String   // e.g., "17:00"
+  dayOfWeek Int
+  startTime String
+  endTime   String
 
   mentor    User     @relation(fields: [mentorId], references: [id])
   mentorId  String
 
-  @@unique([mentorId, dayOfWeek, startTime, endTime]) // Prevent duplicate slots
+  @@unique([mentorId, dayOfWeek, startTime, endTime])
 }
 
 model Message {
@@ -136,17 +155,36 @@ model Message {
   content   String
   createdAt DateTime @default(now())
 
-  // The user who sent the message
   sender    User     @relation("SentMessages", fields: [senderId], references: [id])
   senderId  String
-
-  // The user who received the message
   receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   receiverId String
   
-  // Link the message to the specific mentorship request/match
   request   MentorshipRequest @relation(fields: [requestId], references: [id])
   requestId String
 
   isRead    Boolean  @default(false)
+  
+  // --- SCALE UP 1.1: Add Index for Chat History ---
+  // When fetching chat messages, we always do it for a specific request.
+  // Indexing the 'requestId' will significantly speed up loading chat histories.
+  @@index([requestId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  message   String    // The content of the notification, e.g., "Jane Doe accepted your request."
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  // A link to navigate to when the notification is clicked.
+  // Optional, as some notifications may not be actionable.
+  link      String?
+
+  // The user who receives this notification.
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Add an index for fetching a user's notifications quickly.
+  @@index([userId])
 }

@@ -1,6 +1,6 @@
 // src/services/conversationService.ts
-import api from './api';
 import { User } from '../types';
+import api from './api';
 
 export interface Conversation {
   requestId: string;

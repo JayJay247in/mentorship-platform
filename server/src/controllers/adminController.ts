@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { createNotification } from '../services/notificationService';
 
 const prisma = new PrismaClient();
 
@@ -31,7 +32,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * @desc    Admin: Update a user's role
+ * @desc    Admin: Update a user's role and notify them
  * @route   PUT /api/admin/users/:id/role
  * @access  Private (Admin only)
  */
@@ -39,7 +40,6 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { role } = req.body as { role: Role };
 
-  // Validate the provided role
   if (!role || !Object.values(Role).includes(role)) {
     return res.status(400).json({ message: 'Invalid role provided' });
   }
@@ -50,15 +50,23 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       data: { role },
       select: { id: true, email: true, name: true, role: true },
     });
+
+    // --- NOTIFY THE USER OF THE ROLE CHANGE ---
+    await createNotification({
+      userId: updatedUser.id, // The recipient is the user whose role was changed
+      message: `An admin has updated your role to: ${role}.`,
+      link: '/profile', // A neutral page they can land on
+    });
+
     res.json(updatedUser);
   } catch (error) {
-    // Prisma throws a specific error code if the record to update is not found
     if ((error as any).code === 'P2025') {
       return res.status(404).json({ message: 'User not found' });
     }
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 /**
  * @desc    Admin: Get all mentorship requests in the system

@@ -1,4 +1,4 @@
-// src/types/index.ts
+// client/src/types/index.ts
 
 // --- Core Enums and User Types ---
 export type UserRole = 'ADMIN' | 'MENTOR' | 'MENTEE';
@@ -10,15 +10,20 @@ export interface User {
   role: UserRole;
   bio?: string;
   avatarUrl?: string;
+  createdAt: string;
+  // --- NEW PROFILE 2.0 FIELDS ---
+  title?: string;
+  company?: string;
+  socialLinks?: any; // For holding { linkedin, github, website }
+  skills?: { skill: Skill }[];
 }
 
-// A new type for our API response
-export interface ChatData {
-  messages: Message[];
-  participants: {
-    mentor: { id: string; name: string; avatarUrl?: string };
-    mentee: { id: string; name: string; avatarUrl?: string };
-  };
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface Skill {
@@ -26,33 +31,22 @@ export interface Skill {
   name: string;
 }
 
-// --- Page-Specific Data Shapes ---
-
-export interface Mentor {
+export interface Notification {
   id: string;
-  name: string;
-  bio: string | null;
-  skills: { skill: Skill }[];
+  message: string;
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
+  userId: string;
 }
 
-export interface SentRequest {
-  id: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  mentor: {
-    id: string;
-    name: string;
+// --- Messaging and Chat ---
+export interface ChatData {
+  messages: Message[];
+  participants: {
+    mentor: { id: string; name: string; avatarUrl?: string };
+    mentee: { id: string; name: string; avatarUrl?: string };
   };
-  createdAt: string;
-}
-
-export interface ReceivedRequest {
-  id: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  mentee: {
-    id: string;
-    name: string;
-  };
-  createdAt: string;
 }
 
 export interface Message {
@@ -64,24 +58,52 @@ export interface Message {
   requestId: string;
   isRead: boolean;
   sender: {
-    id: string;
+    id:string;
     name: string;
     avatarUrl?: string;
   };
 }
 
-// --- THIS IS THE SINGLE, CORRECTED SESSION TYPE ---
+
+// --- Mentorship Flow Types ---
+
+export interface Mentor extends User {}
+
+export interface SentRequest {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  mentor: { id: string; name: string; };
+  createdAt: string;
+}
+
+export interface ReceivedRequest {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  mentee: { id: string; name: string; };
+  createdAt: string;
+}
+
 export interface Session {
   id: string;
   status: 'UPCOMING' | 'COMPLETED' | 'CANCELED';
   mentor: { id: string; name: string };
   mentee: { id: string; name: string };
   scheduledTime: string;
+  feedback?: { id: string } | null;
 }
 
-// Admin types can now safely reuse the core types
-export interface AdminUser extends User {
-  createdAt: string;
+// Admin-specific types
+export interface AdminUser extends User {}
+
+// --- THIS IS THE FIX ---
+// The original `AdminRequest` was missing the `mentor` field.
+// This new, complete type matches the data your API sends.
+export interface AdminRequest {
+    id: string;
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    mentee: { id: string; name: string; };
+    mentor: { id: string; name: string; }; // <-- The missing property
+    createdAt: string;
 }
-export interface AdminRequest extends ReceivedRequest {}
+
 export interface AdminSession extends Session {}

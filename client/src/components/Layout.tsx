@@ -1,9 +1,10 @@
 // src/components/Layout.tsx
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+
+import ChatBubble from './ChatBubble';
 import Navbar from './Navbar';
 import AnimatedPage from './ui/AnimatedPage';
-import ChatBubble from './ChatBubble'; // <-- IMPORT
 
 const Layout = () => {
   return (
@@ -16,7 +17,7 @@ const Layout = () => {
           </AnimatedPage>
         </div>
       </main>
-      <ChatBubble /> {/* <-- ADD THE COMPONENT HERE */}
+      <ChatBubble />
     </div>
   );
 };

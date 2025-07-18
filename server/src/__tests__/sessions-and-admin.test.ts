@@ -1,111 +1,53 @@
-// src/__tests__/sessions-and-admin.test.ts
+// server/src/__tests__/sessions-and-admin.test.ts
+
 import request from 'supertest';
 import app from '../server';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { PrismaClient, User } from '@prisma/client';
+
+jest.mock('../services/mailService');
 
 const prisma = new PrismaClient();
 
 describe('Session and Admin API Endpoints', () => {
-  let menteeToken: string;
-  let mentorToken: string;
-  let adminToken: string;
-  let testMentee: any;
-  let testMentor: any;
-  let testAdmin: any;
-  let acceptedRequestId: string;
-  let sessionId: string;
+  jest.setTimeout(30000);
 
-  // ==== SETUP: Runs ONCE before all tests in this file ====
+  let adminToken: string, mentorToken: string, menteeToken: string;
+  let testMentor: User, testMentee: User;
+  let requestId: string, sessionId: string;
+
   beforeAll(async () => {
-    // 1. Clean up previous test users to ensure a fresh start
-    // ---- THIS IS THE CRUCIAL FIX ----
-    // Delete in the correct order to respect foreign key constraints
-
-    // First, delete records that depend on users
+    // 1. Database Cleanup
+    await prisma.message.deleteMany({});
     await prisma.feedback.deleteMany({});
     await prisma.session.deleteMany({});
     await prisma.mentorshipRequest.deleteMany({});
     await prisma.userSkill.deleteMany({});
+    await prisma.availability.deleteMany({});
+    await prisma.notification.deleteMany({});
+    await prisma.user.deleteMany({});
 
-    // Now it's safe to delete the users themselves
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@test.example.com' } },
-    });
+    // 2. Create Users and get Tokens
+    const adminRes = await request(app).post('/api/auth/register').send({ name: 'Admin User', email: 'admin@test.com', password: 'password123', role: 'ADMIN' });
+    adminToken = adminRes.body.token;
 
-    // 2. Create fresh test users (mentee, mentor, admin)
-    const menteePassword = await bcrypt.hash('password123', 10);
-    testMentee = await prisma.user.create({
-      data: {
-        email: 'session.mentee@test.example.com',
-        name: 'Session Mentee',
-        password: menteePassword,
-        role: 'MENTEE',
-      },
-    });
+    const mentorRes = await request(app).post('/api/auth/register').send({ name: 'Session Mentor', email: 'mentor@session.com', password: 'password123', role: 'MENTOR' });
+    testMentor = mentorRes.body.user;
+    mentorToken = mentorRes.body.token;
+    
+    const menteeRes = await request(app).post('/api/auth/register').send({ name: 'Session Mentee', email: 'mentee@session.com', password: 'password123', role: 'MENTEE' });
+    testMentee = menteeRes.body.user;
+    menteeToken = menteeRes.body.token;
 
-    const mentorPassword = await bcrypt.hash('password123', 10);
-    testMentor = await prisma.user.create({
-      data: {
-        email: 'session.mentor@test.example.com',
-        name: 'Session Mentor',
-        password: mentorPassword,
-        role: 'MENTOR',
-      },
-    });
-
-    const adminPassword = await bcrypt.hash('password123', 10);
-    testAdmin = await prisma.user.create({
-      data: {
-        email: 'session.admin@test.example.com',
-        name: 'Session Admin',
-        password: adminPassword,
-        role: 'ADMIN',
-      },
-    });
-
-    // 3. Log them in to get their JWTs
-    const menteeLogin = await request(app)
-      .post('/api/auth/login')
-      .send({ email: testMentee.email, password: 'password123' });
-    menteeToken = menteeLogin.body.token;
-
-    const mentorLogin = await request(app)
-      .post('/api/auth/login')
-      .send({ email: testMentor.email, password: 'password123' });
-    mentorToken = mentorLogin.body.token;
-
-    const adminLogin = await request(app)
-      .post('/api/auth/login')
-      .send({ email: testAdmin.email, password: 'password123' });
-    adminToken = adminLogin.body.token;
-
-    // 4. Create a pre-accepted request to be used for session tests
-    const acceptedRequest = await prisma.mentorshipRequest.create({
-      data: {
-        menteeId: testMentee.id,
-        mentorId: testMentor.id,
-        status: 'ACCEPTED',
-      },
-    });
-    acceptedRequestId = acceptedRequest.id;
-  }, 30000);
-
-  // ==== TEARDOWN: Runs ONCE after all tests ====
-  afterAll(async () => {
-    // Clean up in the correct order again
-    await prisma.feedback.deleteMany({});
-    await prisma.session.deleteMany({});
-    await prisma.mentorshipRequest.deleteMany({});
-    await prisma.userSkill.deleteMany({});
-
-    await prisma.user.deleteMany({
-      where: { email: { contains: '@test.example.com' } },
-    });
-
-    await prisma.$disconnect();
+    // 3. Create an ACCEPTED mentorship request to set up session tests
+    const reqRes = await request(app).post('/api/requests').set('Authorization', `Bearer ${menteeToken}`).send({ mentorId: testMentor.id });
+    requestId = reqRes.body.id;
+    await request(app).put(`/api/requests/${requestId}`).set('Authorization', `Bearer ${mentorToken}`).send({ status: 'ACCEPTED' });
   });
 
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+  
   // --- SESSION TESTS ---
   describe('Session Endpoints', () => {
     it('should allow a mentee to schedule a session for an accepted request', async () => {
@@ -113,46 +55,47 @@ describe('Session and Admin API Endpoints', () => {
         .post('/api/sessions')
         .set('Authorization', `Bearer ${menteeToken}`)
         .send({
-          requestId: acceptedRequestId,
+          requestId: requestId,
           scheduledTime: '2099-01-01T10:00:00.000Z',
         });
+        
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('id');
-      sessionId = res.body.id; // Save for feedback test
+      sessionId = res.body.id; // Correctly save the ID for the next test
     });
 
     it('should allow a mentor to view their upcoming sessions', async () => {
-      const res = await request(app)
-        .get('/api/sessions/mentor')
-        .set('Authorization', `Bearer ${mentorToken}`);
-      expect(res.status).toBe(200);
-      expect(res.body.length).toBeGreaterThan(0);
-      expect(res.body[0].id).toBe(sessionId);
+        const res = await request(app)
+            .get('/api/sessions/mentor')
+            .set('Authorization', `Bearer ${mentorToken}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBeGreaterThan(0);
+        expect(res.body[0].id).toBe(sessionId);
     });
-
+    
     it('should allow a mentee to submit feedback for a past session', async () => {
-      // First, update the session time to be in the past
-      await prisma.session.update({
-        where: { id: sessionId },
-        data: { scheduledTime: '2020-01-01T10:00:00.000Z' },
-      });
+        // First, programmatically set the session date to the past
+        await prisma.session.update({
+          where: { id: sessionId }, // Now sessionId is guaranteed to be defined
+          data: { scheduledTime: '2020-01-01T10:00:00.000Z' },
+        });
+      
+        const res = await request(app)
+            .put(`/api/sessions/${sessionId}/feedback`)
+            .set('Authorization', `Bearer ${menteeToken}`)
+            .send({ rating: 5, comment: 'Great session!' });
 
-      const res = await request(app)
-        .put(`/api/sessions/${sessionId}/feedback`)
-        .set('Authorization', `Bearer ${menteeToken}`)
-        .send({ rating: 5, comment: 'Great session!' });
-
-      expect(res.status).toBe(200);
-      expect(res.body.rating).toBe(5);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body.rating).toBe(5);
     });
   });
 
   // --- ADMIN TESTS ---
   describe('Admin Endpoints', () => {
     it('should allow an admin to get a list of all users', async () => {
-      const res = await request(app)
-        .get('/api/admin/users')
-        .set('Authorization', `Bearer ${adminToken}`);
+      const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThanOrEqual(3);
     });
@@ -162,24 +105,25 @@ describe('Session and Admin API Endpoints', () => {
         .put(`/api/admin/users/${testMentee.id}/role`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ role: 'MENTOR' });
+        
       expect(res.status).toBe(200);
       expect(res.body.role).toBe('MENTOR');
     });
 
     it('should allow an admin to create a manual match', async () => {
-      const res = await request(app)
-        .post('/api/admin/matches')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ menteeId: testMentee.id, mentorId: testMentor.id });
-      expect(res.status).toBe(201);
-      expect(res.body.status).toBe('ACCEPTED');
+        const res = await request(app)
+            .post('/api/admin/matches')
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({ menteeId: testMentee.id, mentorId: testMentor.id });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('ACCEPTED');
     });
 
     it('should NOT allow a non-admin to access an admin route', async () => {
-      const res = await request(app)
-        .get('/api/admin/users')
-        .set('Authorization', `Bearer ${mentorToken}`); // Using mentor token
-      expect(res.status).toBe(403); // Forbidden
+      const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${mentorToken}`);
+      // Middleware should correctly identify this is not an Admin token and forbid access.
+      expect(res.status).toBe(403);
     });
   });
 });

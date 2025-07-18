@@ -1,121 +1,119 @@
 // src/App.tsx
+
+// --- MODIFICATION 1: Import `lazy` and `Suspense` from React ---
 import 'react-toastify/dist/ReactToastify.css';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import React from 'react';
-import {
-  BrowserRouter as Router,
-  Navigate,
-  Route,
-  Routes,
-} from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-// Providers and Components
+import Spinner from './components/Spinner'; // We'll use this for our fallback UI
+// Providers
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
-import RequestManagementPage from './pages/admin/RequestManagementPage';
-import SessionManagementPage from './pages/admin/SessionManagementPage';
-// Admin Pages
-import UserManagementPage from './pages/admin/UserManagementPage';
-import AvailabilityPage from './pages/AvailabilityPage';
-import ChatPage from './pages/ChatPage'
-// Shared Protected Pages
-import DashboardPage from './pages/DashboardPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-// Mentor Pages
-import IncomingRequestsPage from './pages/IncomingRequestsPage';
-// --- Page Imports ---
+
+// --- MODIFICATION 2: CONVERT ALL PAGE IMPORTS TO USE React.lazy() ---
+// Instead of importing the component directly, we call `lazy()` with a dynamic `import()` statement.
+// This tells React to fetch the code for these components only when they are first rendered.
+
 // Public Pages
-import LoginPage from './pages/LoginPage';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+
+// Shared Protected Pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+
 // Mentee Pages
-import MentorListPage from './pages/MentorListPage';
-import MentorSessionsPage from './pages/MentorSessionsPage';
-import MyRequestsPage from './pages/MyRequestsPage';
-import MySessionsPage from './pages/MySessionsPage';
-import ProfilePage from './pages/ProfilePage';
-import RegisterPage from './pages/RegisterPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
+const MentorListPage = lazy(() => import('./pages/MentorListPage'));
+const MyRequestsPage = lazy(() => import('./pages/MyRequestsPage'));
+const MySessionsPage = lazy(() => import('./pages/MySessionsPage'));
+
+// Mentor Pages
+const IncomingRequestsPage = lazy(() => import('./pages/IncomingRequestsPage'));
+const MentorSessionsPage = lazy(() => import('./pages/MentorSessionsPage'));
+const AvailabilityPage = lazy(() => import('./pages/AvailabilityPage'));
+
+// Admin Pages
+const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage'));
+const RequestManagementPage = lazy(() => import('./pages/admin/RequestManagementPage'));
+const SessionManagementPage = lazy(() => import('./pages/admin/SessionManagementPage'));
+
 
 const queryClient = new QueryClient();
+
+// A simple component to use as the Suspense fallback. It renders a spinner in the center of the screen.
+const FullscreenSpinner = () => (
+  <div className="w-screen h-screen flex justify-center items-center">
+    <Spinner />
+  </div>
+);
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SocketProvider>
-        <Router>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-          />
-          <Routes>
-            {/* =================================== */}
-            {/*         PUBLIC ROUTES               */}
-            {/* These are accessible to everyone    */}
-            {/* =================================== */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route
-              path="/reset-password/:token"
-              element={<ResetPasswordPage />}
+          <Router>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
             />
+            {/* --- MODIFICATION 3: WRAP THE <Routes> WITH <Suspense> --- */}
+            {/* The `fallback` prop defines what React will render while it's fetching a lazy-loaded component's code. */}
+            <Suspense fallback={<FullscreenSpinner />}>
+              <Routes>
+                {/* All your Route definitions remain exactly the same! */}
 
-            {/* Redirect root path to the login page */}
-            <Route path="/" element={<Navigate to="/login" />} />
+                {/* =================================== */}
+                {/*         PUBLIC ROUTES               */}
+                {/* =================================== */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
-            {/* =================================== */}
-            {/*         PROTECTED ROUTES            */}
-            {/* Require login and have the Layout   */}
-            {/* =================================== */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<Layout />}>
-                {/* Shared */}
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/chat/:requestId" element={<ChatPage />} />
+                <Route path="/" element={<Navigate to="/login" />} />
 
-                {/* Mentee */}
-                <Route path="/mentors" element={<MentorListPage />} />
-                <Route path="/my-requests" element={<MyRequestsPage />} />
-                <Route path="/my-sessions" element={<MySessionsPage />} />
+                {/* =================================== */}
+                {/*         PROTECTED ROUTES            */}
+                {/* =================================== */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<Layout />}>
+                    {/* Shared */}
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/chat/:requestId" element={<ChatPage />} />
 
-                {/* Mentor */}
-                <Route
-                  path="/mentor/requests"
-                  element={<IncomingRequestsPage />}
-                />
-                <Route
-                  path="/mentor/sessions"
-                  element={<MentorSessionsPage />}
-                />
-                <Route
-                  path="/mentor/availability"
-                  element={<AvailabilityPage />}
-                />
+                    {/* Mentee */}
+                    <Route path="/mentors" element={<MentorListPage />} />
+                    <Route path="/my-requests" element={<MyRequestsPage />} />
+                    <Route path="/my-sessions" element={<MySessionsPage />} />
 
-                {/* Admin */}
-                <Route path="/admin/users" element={<UserManagementPage />} />
-                <Route
-                  path="/admin/requests"
-                  element={<RequestManagementPage />}
-                />
-                <Route
-                  path="/admin/sessions"
-                  element={<SessionManagementPage />}
-                />
-              </Route>
-            </Route>
+                    {/* Mentor */}
+                    <Route path="/mentor/requests" element={<IncomingRequestsPage />} />
+                    <Route path="/mentor/sessions" element={<MentorSessionsPage />} />
+                    <Route path="/mentor/availability" element={<AvailabilityPage />} />
 
-            {/* Optional: Add a 404 Not Found page */}
-            <Route path="*" element={<h1>404: Page Not Found</h1>} />
-          </Routes>
-        </Router>
+                    {/* Admin */}
+                    <Route path="/admin/users" element={<UserManagementPage />} />
+                    <Route path="/admin/requests" element={<RequestManagementPage />} />
+                    <Route path="/admin/sessions" element={<SessionManagementPage />} />
+                  </Route>
+                </Route>
+
+                <Route path="*" element={<h1>404: Page Not Found</h1>} />
+              </Routes>
+            </Suspense>
+          </Router>
         </SocketProvider>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />

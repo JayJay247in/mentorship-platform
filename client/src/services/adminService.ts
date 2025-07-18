@@ -3,6 +3,16 @@ import { AdminUser, UserRole } from '../types';
 import { AdminRequest, AdminSession } from '../types';
 import api from './api';
 
+interface CreateManualMatchPayload {
+  mentorId: string;
+  menteeId: string;
+}
+
+export const createManualMatch = async (payload: CreateManualMatchPayload) => {
+  const { data } = await api.post('/admin/matches', payload);
+  return data;
+};
+
 export const fetchAllUsers = async (): Promise<AdminUser[]> => {
   const { data } = await api.get('/admin/users');
   return data;

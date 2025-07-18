@@ -3,6 +3,7 @@ import { PrismaClient, RequestStatus } from '@prisma/client';
 import AppError from '../utils/AppError';
 import { sendEmail } from './mailService';
 import { emitNotification } from '../socket';
+import { createNotification } from './notificationService';
 
 const prisma = new PrismaClient();
 
@@ -65,48 +66,34 @@ export const getReceived = async (mentorId: string) => {
 };
 
 // Service to update the status of a request
-export const updateStatus = async (requestId: string, mentorId: string, status: RequestStatus) => {
-  if (!status || !['ACCEPTED', 'REJECTED'].includes(status)) {
-    throw new AppError('Invalid status provided. Must be ACCEPTED or REJECTED', 400);
-  }
-
-  const requestToUpdate = await prisma.mentorshipRequest.findUnique({
-    where: { id: requestId },
-    include: { mentee: true, mentor: true }
-  });
-
-  if (!requestToUpdate) {
-    throw new AppError('Request not found', 404);
-  }
-  if (requestToUpdate.mentorId !== mentorId) {
-    throw new AppError('You are not authorized to update this request', 403);
-  }
-  if (requestToUpdate.status !== 'PENDING') {
-      throw new AppError('This request has already been actioned.', 409);
-  }
-
+export const updateStatus = async (
+  requestId: string,
+  mentorId: string,
+  status: RequestStatus
+) => {
   const updatedRequest = await prisma.mentorshipRequest.update({
-    where: { id: requestId },
+    where: { id: requestId, mentorId: mentorId },
     data: { status },
+    include: {
+      mentee: { select: { name: true } },
+      mentor: { select: { name: true } },
+    },
   });
 
-  // --- THIS IS THE CORRECTED PART ---
-  // We declare these variables ONCE at the top of this block.
-  const mentee = requestToUpdate.mentee;
-  const mentor = requestToUpdate.mentor;
-
-  // Now we can reuse them for both the email and the real-time notification.
-  await sendEmail({
-      to: mentee.email,
-      subject: `Your mentorship request has been ${status.toLowerCase()}`,
-      html: `<p>Hi ${mentee.name}, your request to ${mentor.name} has been ${status}.</p>${status === 'ACCEPTED' ? '<p>You can now log in to book a session!</p>' : ''}`
-  });
-
-  // We reuse the 'mentee' and 'mentor' variables here, without re-declaring them.
-  emitNotification(mentee.id, {
-      message: `Your request to ${mentor.name} has been ${status.toLowerCase()}.`,
-      link: '/my-requests',
-  });
+  // --- ADD NOTIFICATION LOGIC ---
+  if (status === 'ACCEPTED') {
+    await createNotification({
+      userId: updatedRequest.menteeId,
+      message: `Your request with ${updatedRequest.mentor.name} was accepted!`,
+      link: `/my-requests`, // Link to the page where they can book a session
+    });
+  } else if (status === 'REJECTED') {
+    await createNotification({
+      userId: updatedRequest.menteeId,
+      message: `Your request with ${updatedRequest.mentor.name} was declined.`,
+      link: `/mentors`, // Suggest they find another mentor
+    });
+  }
 
   return updatedRequest;
 };
